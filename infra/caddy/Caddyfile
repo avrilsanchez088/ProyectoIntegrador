@@ -1,0 +1,33 @@
+# Caddyfile para desarrollo local.
+#
+# Caddy escucha en :8080 y rutea al web (3100) y api (3101) que corren via
+# `pnpm dev` en el host. Permite usar una sola URL `http://localhost:8080`
+# para frontend + API, evitando issues de CORS / cookies cross-origin.
+#
+# En producción este file se reemplaza por una versión con TLS automático
+# y los upstreams apuntando a contenedores.
+
+{
+	# Off durante dev — sin certificados.
+	auto_https off
+}
+
+# Sin host explícito → Caddy matchea cualquier request a :8080.
+:8080 {
+	# host.docker.internal apunta al host desde dentro del container.
+	# El web sirve la UI + las cookies de Better Auth.
+	@api path /api/* /ical/*
+	handle @api {
+		reverse_proxy host.docker.internal:3101
+	}
+	handle {
+		reverse_proxy host.docker.internal:3100
+	}
+
+	encode zstd gzip
+
+	log {
+		output stdout
+		format console
+	}
+}

@@ -1,0 +1,43 @@
+{
+  "name": "impacto",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Impacto · SaaS de reservas vía WhatsApp para alojamientos LATAM",
+  "packageManager": "pnpm@9.7.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:e2e": "turbo run test:e2e",
+    "db:generate": "pnpm --filter @impacto/db generate",
+    "db:migrate": "pnpm --filter @impacto/db migrate",
+    "db:seed": "pnpm --filter @impacto/db seed",
+    "db:studio": "pnpm --filter @impacto/db studio",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "docker:reset": "docker compose down -v && docker compose up -d",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx,json}": "biome check --write --no-errors-on-unmatched"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.0",
+    "husky": "^9.1.0",
+    "lint-staged": "^15.2.0",
+    "turbo": "^2.1.0",
+    "typescript": "^5.6.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "next": "^15.1.11"
+    }
+  }
+}

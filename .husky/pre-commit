@@ -1,0 +1,19 @@
+#!/usr/bin/env sh
+# Pre-commit hook · §2.15 del audit + propuesta 1.5 ronda 1.
+#
+# Corre lint-staged: solo procesa archivos staged, no todo el repo. Es rápido
+# (~1s para PRs chicos).
+
+if [ -n "$SKIP_HOOKS" ]; then
+  echo "↪︎ pre-commit skipped (SKIP_HOOKS=1)"
+  exit 0
+fi
+
+pnpm exec lint-staged
+
+# Si tocamos migrations SQL o el journal, validamos RLS coverage + timestamps
+# (propuestas 169.1 + 169.2 + 180.1). Si no cambió nada relevante, skip rápido.
+if git diff --cached --name-only | grep -qE 'packages/db/migrations/.*\.sql$|packages/db/migrations/meta/_journal\.json$|scripts/lint-migrations'; then
+  echo "→ migration change detected — running migration linters (paralelo)"
+  node scripts/lint-migrations-all.mjs || exit 1
+fi

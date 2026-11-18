@@ -1,0 +1,199 @@
+# ====================================================================
+# Impacto · stack de desarrollo local
+# ====================================================================
+# Uso:
+#   docker compose up -d        # levanta todo
+#   docker compose down         # apaga
+#   docker compose logs -f      # ver logs en vivo
+#   docker compose ps           # ver estado
+#
+# Puertos elegidos para NO chocar con el proyecto `platform`:
+#   Postgres 5433 (no 5432) · Redis 6380 (no 6379) · Web 3100 · API 3101
+# ====================================================================
+
+name: impacto
+
+services:
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: impacto_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-impacto}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-impacto_dev_password_change_me}
+      POSTGRES_DB: ${DB_NAME:-impacto}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5433:5432"
+    volumes:
+      - C:/docker/impacto/postgres:/var/lib/postgresql/data
+      - ./infra/postgres-init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - impacto_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-impacto} -d ${DB_NAME:-impacto}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: impacto_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-impacto_dev_redis}
+    ports:
+      - "6380:6379"
+    volumes:
+      - C:/docker/impacto/redis:/data
+    networks:
+      - impacto_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  mailhog:
+    # Captura correos en dev sin enviarlos a internet.
+    # SMTP en 1125, UI web en http://localhost:8125
+    image: mailhog/mailhog:latest
+    container_name: impacto_mailhog
+    restart: unless-stopped
+    ports:
+      - "1125:1025"   # SMTP
+      - "8125:8025"   # Web UI
+    networks:
+      - impacto_net
+
+  minio:
+    # Object storage compatible con S3 (mock de Cloudflare R2 en dev).
+    # Console en http://localhost:9101 (admin/impacto_dev_minio)
+    image: minio/minio:latest
+    container_name: impacto_minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_USER:-admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD:-impacto_dev_minio}
+    ports:
+      - "9100:9000"   # API
+      - "9101:9001"   # Console
+    volumes:
+      - C:/docker/impacto/minio:/data
+    networks:
+      - impacto_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  bull-board:
+    # Dashboard interno para inspeccionar las colas BullMQ.
+    image: deadly0/bull-board:latest
+    container_name: impacto_bull_board
+    restart: unless-stopped
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-impacto_dev_redis}
+    ports:
+      - "3102:3000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - impacto_net
+
+  caddy:
+    # Reverse proxy en :8080. Frontea web (3100) y api (3101) que corren via
+    # `pnpm dev` en el host. Single-origin → cookies de auth funcionan sin
+    # tocar SameSite/CORS para development. Ver `infra/caddy/Caddyfile` y
+    # CLAUDE.md §13. (G1.5 del audit.)
+    image: caddy:2-alpine
+    container_name: impacto_caddy
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - impacto_caddy_data:/data
+      - impacto_caddy_config:/config
+    extra_hosts:
+      # En Linux Docker no resuelve host.docker.internal por default — esto lo
+      # asegura y mantiene compat con Docker Desktop en Windows / macOS.
+      - "host.docker.internal:host-gateway"
+    networks:
+      - impacto_net
+
+  backups:
+    # pg_dump diario en /backups con rotación 14d. §5.5 del audit.
+    # Profile 'backup' → en dev se activa explícito (`docker compose
+    # --profile backup up -d backups`). En prod se levanta por default.
+    build: ./infra/backups
+    container_name: impacto_backups
+    restart: unless-stopped
+    profiles: ["backup"]
+    environment:
+      PGHOST: postgres
+      PGUSER: ${DB_USER:-impacto}
+      PGPASSWORD: ${DB_PASSWORD:-impacto_dev_password_change_me}
+      PGDATABASE: ${DB_NAME:-impacto}
+      BACKUP_RETENTION_DAYS: 14
+      TZ: UTC
+    volumes:
+      - C:/docker/impacto/backups:/backups
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - impacto_net
+
+  whisper:
+    # Servidor whisper.cpp self-hosted para transcripción de voice notes
+    # entrantes por WhatsApp (CLAUDE.md §15 G9 / §1.7 del audit).
+    #
+    # Modelo: 'base' (~140MB, ~5x realtime, español aceptable) — descargado al
+    # primer arranque y persistido en el volume `impacto_whisper_models`.
+    # En prod se evaluará 'small' si la calidad lo amerita.
+    #
+    # Profile 'voice' → solo se levanta cuando se necesita explícitamente
+    # (`docker compose --profile voice up`). Pesado para dev diario.
+    image: ghcr.io/ahrtelarbnyhrmbgjafr/whisper-server:latest
+    container_name: impacto_whisper
+    restart: unless-stopped
+    profiles: ["voice"]
+    environment:
+      WHISPER_MODEL: ${WHISPER_MODEL:-base}
+      WHISPER_LANGUAGE: ${WHISPER_LANGUAGE:-es}
+    ports:
+      - "9200:8080"
+    volumes:
+      - impacto_whisper_models:/models
+    networks:
+      - impacto_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# ====================================================================
+# NOTA: apps/web, apps/api y apps/worker se levantan vía pnpm en local
+# durante desarrollo (con hot-reload). Solo agregamos sus servicios al
+# docker-compose cuando vayamos a deployar a producción.
+# ====================================================================
+
+networks:
+  impacto_net:
+    name: impacto_net
+    driver: bridge
+
+# Volumes con prefijo `impacto_*` (ver CLAUDE.md §13). Postgres / Redis /
+# MinIO siguen usando bind mounts a `C:/docker/impacto/*` por compat con el
+# entorno actual; cuando esa convención cambie, mover acá también.
+volumes:
+  impacto_caddy_data:
+  impacto_caddy_config:
+  impacto_whisper_models:
