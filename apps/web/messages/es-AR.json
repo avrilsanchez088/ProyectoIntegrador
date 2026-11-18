@@ -1,0 +1,26 @@
+{
+  "_meta": {
+    "locale": "es-AR",
+    "label": "Español (Argentina)",
+    "fallback": "es"
+  },
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "create": "Crear",
+    "loading": "Cargando…",
+    "saving": "Guardando…",
+    "back": "Volver",
+    "retry": "Reintentar",
+    "search": "Buscar"
+  },
+  "auth": {
+    "signIn": "Iniciar sesión",
+    "signUp": "Crear cuenta",
+    "signOut": "Cerrar sesión",
+    "noAccount": "¿No tenés cuenta?",
+    "createOne": "Creá una"
+  }
+}

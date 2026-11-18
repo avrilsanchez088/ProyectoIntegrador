@@ -1,0 +1,67 @@
+{
+  "_meta": {
+    "locale": "es",
+    "label": "Español (LATAM neutro)",
+    "fallback": "es"
+  },
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "create": "Crear",
+    "loading": "Cargando…",
+    "saving": "Guardando…",
+    "back": "Volver",
+    "retry": "Reintentar",
+    "search": "Buscar",
+    "yes": "Sí",
+    "no": "No"
+  },
+  "auth": {
+    "signIn": "Iniciar sesión",
+    "signUp": "Crear cuenta",
+    "signOut": "Cerrar sesión",
+    "email": "Email",
+    "password": "Contraseña",
+    "forgotPassword": "Olvidé mi contraseña",
+    "noAccount": "¿No tenés cuenta?",
+    "createOne": "Crear una",
+    "continueWithGoogle": "Continuar con Google",
+    "continueWithFacebook": "Continuar con Facebook"
+  },
+  "dashboard": {
+    "home": "Inicio",
+    "bookings": "Reservas",
+    "blocks": "Bloqueos",
+    "calendars": "Calendarios",
+    "properties": "Propiedades",
+    "policies": "Políticas",
+    "team": "Equipo",
+    "settings": "Configuración",
+    "profile": "Perfil",
+    "notifications": "Notificaciones"
+  },
+  "bookings": {
+    "title": "Reservas",
+    "newBooking": "Nueva reserva",
+    "noBookings": "Aún no hay reservas",
+    "noBookingsHint": "Cuando llegue una vía WhatsApp o cuando la cargues manualmente, aparece acá.",
+    "status": {
+      "tentative": "Tentativa",
+      "confirmed": "Confirmada",
+      "checked_in": "En estadía",
+      "checked_out": "Finalizada",
+      "cancelled": "Cancelada",
+      "no_show": "No-show"
+    }
+  },
+  "errors": {
+    "overlap": "Las fechas elegidas se superponen con otra reserva o bloqueo.",
+    "validation": "Algunos campos tienen errores. Revisá el formulario.",
+    "rateLimitExceeded": "Hiciste muchas acciones seguidas. Esperá un minuto y probá de nuevo.",
+    "unauthorized": "Necesitás iniciar sesión.",
+    "noActiveOrganization": "Elegí un workspace primero.",
+    "unknown": "Algo salió mal. Probá de nuevo."
+  }
+}
